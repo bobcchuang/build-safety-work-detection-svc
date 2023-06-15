@@ -1,0 +1,50 @@
+# This file is a template, and might need editing before it works on your project.
+docker-build-master:
+  # Official docker image.
+  image: docker:latest
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    https_proxy: "http://proxy-sslbypass.corpnet.auo.com:3128"
+    no_proxy: ".corpnet.auo.com,localhost,127.0.0.1,docker"
+    APP_NAME: "safety-work-detection"
+
+  stage: build
+  services:
+    - docker:dind
+
+  before_script:
+    - env | sort
+    # app
+    - apk update
+    - apk add zip
+    - tar cvf app.tar util static svc.py requirements.txt backimg
+    # model_data
+
+    # binary file
+    - mkdir -p wheel
+#    - wget https://itvideoaiappadls.blob.core.windows.net/build-weight/py_packages/matplotlib-3.3.0-cp36-cp36m-linux_aarch64.whl -P wheel
+#    - wget https://itvideoaiappadls.blob.core.windows.net/build-weight/apt_lib/libopenmpi2_2.1.1-8_arm64.deb -P wheel
+    - ls -lh wheel
+    # buildx
+    - mkdir -p ~/.docker/cli-plugins
+    - wget https://itvideoaiappadls.blob.core.windows.net/build-weight/docker/buildx-v0.8.2.linux-amd64 -O  ~/.docker/cli-plugins/docker-buildx
+    - chmod +x ~/.docker/cli-plugins/docker-buildx
+  script:
+    - docker run --privileged --rm tonistiigi/binfmt --install arm64
+    - docker buildx build --platform linux/arm64 -t openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}-arm64
+      --label com.auo.author=$GITLAB_USER_LOGIN --label com.auo.email=$GITLAB_USER_EMAIL
+      --build-arg https_proxy=$https_proxy --build-arg http_proxy=$https_proxy
+      --push .
+    - docker buildx build --platform linux/amd64 -t openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}-amd64
+      --label com.auo.author=$GITLAB_USER_LOGIN --label com.auo.email=$GITLAB_USER_EMAIL
+      --build-arg https_proxy=$https_proxy --build-arg http_proxy=$https_proxy
+      --push .
+    - docker manifest rm openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME} || true
+    - docker manifest create openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}
+        openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}-arm64
+        openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}-amd64
+    - docker manifest push openaiacr.azurecr.io/auo/${APP_NAME}-svc:${CI_BUILD_REF_NAME}
+
+  only:
+    - tags
+    - web

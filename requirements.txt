@@ -1,0 +1,18 @@
+# Base ----------------------------------------
+pydantic
+Shapely==1.8.4
+opencv-python==4.6.0.66
+numpy==1.19.4
+typing-extensions
+requests
+Pillow>=7.1.2
+PyYAML>=5.3.1
+tqdm
+protobuf<4.21.3
+# fastapi -------------------------------------
+fastapi==0.75.2
+uvicorn==0.16.0
+python-multipart
+click==7.1.2
+asgiref==3.4.1
+gunicorn==20.1.0
